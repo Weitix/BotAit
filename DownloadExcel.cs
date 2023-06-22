@@ -51,14 +51,7 @@ namespace BotAit
                 }
                 latestFileUrl = fileUrls[0];
 
-                //if (fileUrls.Count > 0)
-                //{
-                //    latestFileUrl = fileUrls[1];
-                //}
-                //else
-                //{
-                    
-                //}
+                
 
 
                 if (!File.Exists(localFilePath) && !string.IsNullOrEmpty(latestFileUrl))

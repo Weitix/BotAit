@@ -232,6 +232,23 @@ async Task handleMessage(ITelegramBotClient botClient, Message message, Cancella
             await botClient.SendTextMessageAsync(message.Chat.Id, $"📰  Последние новости АИТa  📰", replyMarkup: newsButton);
 
         }
+        if (message.Text == "/game")
+        {
+            var gameKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallBackGame("Играть")
+                }
+            });
+
+            await botClient.SendGameAsync(
+                chatId: message.Chat.Id,
+                gameShortName: "TestGame",
+                replyMarkup: gameKeyboard
+            );
+
+        }
     }
 
     catch (Exception ex)
@@ -241,136 +258,152 @@ async Task handleMessage(ITelegramBotClient botClient, Message message, Cancella
     }
 }
 
+
 async Task handleCallBackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
 {
     try
     {
+
         if (callbackQuery != null)
         {
             await SQL.AddUser('@' + callbackQuery.Message.Chat.Id);
 
-            if (SQL.userCount % 100 == 0 && SQL.hundredthUser)
+            string gameName = "TestGame";
+
+            if (callbackQuery.GameShortName == gameName)
             {
-                SQL.hundredthUser = false;
-                await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"🎉поздравляю вы {SQL.userCount} пользователь АИТ бота🎉");
+                Console.WriteLine(callbackQuery.Data);
+                //?userid=" + callbackQuery.Message.Chat.Id
+                var gameUrl = "https://weitix.github.io/webAppTG/";
+                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, url: gameUrl);
             }
+          
 
-            if (callbackQuery.Data.Contains("para"))
+            else
             {
-                await specificGrupp(botClient, callbackQuery);
-            }
+                //if (SQL.userCount % 100 == 0 && SQL.hundredthUser)
+                //{
+                //    SQL.hundredthUser = false;
+                //    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"🎉поздравляю вы {SQL.userCount} пользователь АИТ бота🎉");
+                //}
 
-            if (callbackQuery.Data.Contains("gruppa"))
-            {
-                await selectGrupp(botClient, callbackQuery);
-
-            }
-
-            if (callbackQuery.Data.Contains("-"))
-            {
-                await selectDayOfWeek(botClient, callbackQuery);
-
-            }
-
-            if (callbackQuery.Data.Contains("Week"))
-            {
-                string grupp = await SQL.GetUserLang('@' + callbackQuery.Message.Chat.Id);
-                string Week = callbackQuery.Data.Split("_")[0];
-                string substr = Week.Substring(0, 3) + "_";
-
-                Message waitMessage = await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, text: "🔎 Ищем ваше расписание на " + Week + " 🤔");
-                Thread.Sleep(1500);
-                await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, messageId: waitMessage.MessageId, cancellationToken: cancellationToken);
-
-                try
+                if (callbackQuery.Data.Contains("para"))
                 {
-                    List<List<string>> paraInfo = await getExcel(callbackQuery, grupp, substr);
-                    List<List<string>> msgLine = new List<List<string>>();
-                    string[] lessonTime = { "8.00-09.20", "09.30-10.50", "11.10-12.20", "12.40-14.00", "14.10-15.30", "15.40-17.00" };
+                    await specificGrupp(botClient, callbackQuery);
+                }
 
-                    if (paraInfo != null)
+                if (callbackQuery.Data.Contains("gruppa"))
+                {
+                    await selectGrupp(botClient, callbackQuery);
+
+                }
+
+                if (callbackQuery.Data.Contains("-"))
+                {
+                    await selectDayOfWeek(botClient, callbackQuery);
+
+                }
+
+                if (callbackQuery.Data.Contains("Week"))
+                {
+                    string grupp = await SQL.GetUserLang('@' + callbackQuery.Message.Chat.Id);
+                    string Week = callbackQuery.Data.Split("_")[0];
+                    string substr = Week.Substring(0, 3) + "_";
+
+                    Message waitMessage = await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, text: "🔎 Ищем ваше расписание на " + Week + " 🤔");
+                    Thread.Sleep(1500);
+                    await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, messageId: waitMessage.MessageId, cancellationToken: cancellationToken);
+
+                    try
                     {
-                        //убрать остутствующие пары при выводе, логика в сообщения #INWORK 
-                        Console.WriteLine("______________paraInfo_______________________");
+                        List<List<string>> paraInfo = await getExcel(callbackQuery, grupp, substr);
+                        List<List<string>> msgLine = new List<List<string>>();
+                        string[] lessonTime = { "8.00-09.20", "09.30-10.50", "11.10-12.20", "12.40-14.00", "14.10-15.30", "15.40-17.00" };
 
-                        for (int i = 0; i < paraInfo.Count; i++)
+                        if (paraInfo != null)
                         {
-                            msgLine.Add(new List<string>());
+                            //убрать остутствующие пары при выводе, логика в сообщения #INWORK 
+                            Console.WriteLine("______________paraInfo_______________________");
 
-                            if (paraInfo[i][0].ToString() != " ")
+                            for (int i = 0; i < paraInfo.Count; i++)
                             {
+                                msgLine.Add(new List<string>());
 
-                                msgLine[i].Add($"<b>⏰   {lessonTime[i]}   ⏰</b>{Environment.NewLine}"); //0
-                                msgLine[i].Add("📒 " + paraInfo[i][0].ToString() + Environment.NewLine); //1
-                                msgLine[i].Add($"<b>🏫 Кабинет: </b>"); //2
-                                msgLine[i].Add(paraInfo[i][1].ToString() + Environment.NewLine + Environment.NewLine); //3 
+                                if (paraInfo[i][0].ToString() != " ")
+                                {
+
+                                    msgLine[i].Add($"<b>⏰   {lessonTime[i]}   ⏰</b>{Environment.NewLine}"); //0
+                                    msgLine[i].Add("📒 " + paraInfo[i][0].ToString() + Environment.NewLine); //1
+                                    msgLine[i].Add($"<b>🏫 Кабинет: </b>"); //2
+                                    msgLine[i].Add(paraInfo[i][1].ToString() + Environment.NewLine + Environment.NewLine); //3 
+                                }
+                                else
+                                {
+                                    msgLine[i].Add("");
+                                    msgLine[i].Add("");
+                                    msgLine[i].Add("");
+                                    msgLine[i].Add("");
+                                }
                             }
+
+                            bool allEmpty = msgLine.All(list => list.All(string.IsNullOrEmpty));
+
+
+                            if (allEmpty)
+                            {
+                                await botClient.SendTextMessageAsync(
+                                           callbackQuery.Message.Chat.Id,
+                                           text:
+                                           "<b>🧑‍🏫 Группа:  </b>" + grupp + Environment.NewLine +
+                                           "<b>📅 День недели:  </b>" + Week + Environment.NewLine +
+                                           "<b>😜 У вас нет пар 😜</b>", ParseMode.Html
+                                           );
+                            }
+
                             else
                             {
-                                msgLine[i].Add("");
-                                msgLine[i].Add("");
-                                msgLine[i].Add("");
-                                msgLine[i].Add("");
+                                await botClient.SendTextMessageAsync(
+                                           callbackQuery.Message.Chat.Id,
+                                           text:
+                                           "<b>🧑‍🏫 Группа:  </b>" + grupp + Environment.NewLine +
+                                           "<b>📅 День недели:  </b>" + Week + Environment.NewLine + Environment.NewLine +
+                                           msgLine[0][0] + msgLine[0][1] + msgLine[0][2] + msgLine[0][3] +
+                                           msgLine[1][0] + msgLine[1][1] + msgLine[1][2] + msgLine[1][3] +
+                                           msgLine[2][0] + msgLine[2][1] + msgLine[2][2] + msgLine[2][3] +
+                                           msgLine[3][0] + msgLine[3][1] + msgLine[3][2] + msgLine[3][3] +
+                                           msgLine[4][0] + msgLine[4][1] + msgLine[4][2] + msgLine[4][3] +
+                                           msgLine[5][0] + msgLine[5][1] + msgLine[5][2] + msgLine[5][3]
+                                           , ParseMode.Html
+                                           );
                             }
                         }
 
-                        bool allEmpty = msgLine.All(list => list.All(string.IsNullOrEmpty));
 
 
-                        if (allEmpty)
-                        {
-                            await botClient.SendTextMessageAsync(
-                                       callbackQuery.Message.Chat.Id,
-                                       text:
-                                       "<b>🧑‍🏫 Группа:  </b>" + grupp + Environment.NewLine +
-                                       "<b>📅 День недели:  </b>" + Week + Environment.NewLine +
-                                       "<b>😜 У вас нет пар 😜</b>", ParseMode.Html
-                                       );
-                        }
 
-                        else
-                        {
-                            await botClient.SendTextMessageAsync(
-                                       callbackQuery.Message.Chat.Id,
-                                       text:
-                                       "<b>🧑‍🏫 Группа:  </b>" + grupp + Environment.NewLine +
-                                       "<b>📅 День недели:  </b>" + Week + Environment.NewLine + Environment.NewLine +
-                                       msgLine[0][0] + msgLine[0][1] + msgLine[0][2] + msgLine[0][3] +
-                                       msgLine[1][0] + msgLine[1][1] + msgLine[1][2] + msgLine[1][3] +
-                                       msgLine[2][0] + msgLine[2][1] + msgLine[2][2] + msgLine[2][3] +
-                                       msgLine[3][0] + msgLine[3][1] + msgLine[3][2] + msgLine[3][3] +
-                                       msgLine[4][0] + msgLine[4][1] + msgLine[4][2] + msgLine[4][3] +
-                                       msgLine[5][0] + msgLine[5][1] + msgLine[5][2] + msgLine[5][3]
-                                       , ParseMode.Html
-                                       );
-                        }
+
+
+                    }
+
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("_____________Возникло исключение!______________");
+                        Console.WriteLine(ex.Message);
+                        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"😔 при попытке вывести ваше расписание возникла неизвестная ошибка ⛔");
                     }
 
 
-
-
-
-
                 }
 
-                catch (Exception ex)
+                if (callbackQuery.Data.Contains("somenews"))
                 {
-                    Console.WriteLine("_____________Возникло исключение!______________");
-                    Console.WriteLine(ex.Message);
-                    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"😔 при попытке вывести ваше расписание возникла неизвестная ошибка ⛔");
+                    await pickNews(botClient, callbackQuery);
                 }
 
-
-            }
-
-            if (callbackQuery.Data.Contains("somenews"))
-            {
-                await pickNews(botClient, callbackQuery);
-            }
-
-            if (callbackQuery.Data.Contains("picknews"))
-            {
-                await pickCorrentNews(botClient, callbackQuery, cancellationToken);
+                if (callbackQuery.Data.Contains("picknews"))
+                {
+                    await pickCorrentNews(botClient, callbackQuery, cancellationToken);
+                }
             }
         }
     }
